@@ -1,0 +1,4 @@
+requests
+bilibili-live-api
+browser_cookie3
+httpx
