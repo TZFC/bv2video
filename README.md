@@ -1,6 +1,6 @@
 # bv2video
 download video from bilibili using cookie from firefox
-Bonus Feature:
+## Bonus Feature:
 Download segment of video
-Know bugs:
+## Know bugs:
 Video and Audio desync when not starting from beginning.
