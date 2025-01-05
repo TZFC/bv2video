@@ -21,7 +21,7 @@ async def download_url(url: str, out: str, info: str):
                 if not chunk:
                     break
                 process += len(chunk)
-                print(f'downloading {info} {process} / {length}')
+                # print(f'downloading {info} {process} / {length}')
                 f.write(chunk)
 
 
@@ -54,38 +54,46 @@ semaphore = asyncio.Semaphore(8)
 async def process_video(archive, credential):
     async with semaphore:  # Ensure the semaphore limits execution
         bvid = archive['bvid']
-        v = Video(bvid=bvid, credential=credential)
-
-        # Get download URL data
-        # Retry logic for timeout errors
-        for attempt in range(3):  # Retry up to 3 times
-            try:
-                download_url_data = await asyncio.wait_for(v.get_download_url(0), timeout=120)
-                break
-            except asyncio.TimeoutError:
-                if attempt < 2:
-                    print(f"Timeout for {bvid}, retrying {attempt + 1}/3...")
-                else:
-                    print(f"Failed to process {bvid} after 3 retries.")
-                    return
-
-        detecter = VideoDownloadURLDataDetecter(data=download_url_data)
-        best_streams = detecter.detect_best_streams()
-
-        print(f'Starting to download {bvid}')
-
-        # Download video
         m4s_file = f"{bvid}.m4s"
         wav_file = f"{bvid}.wav"
         if os.path.exists(wav_file):
             print(f"Skipping download for {m4s_file}, file already exists.")
         else:
+            v = Video(bvid=bvid, credential=credential)
+
+            # Get download URL data
+            # Retry logic for timeout errors
+            for attempt in range(3):  # Retry up to 3 times
+                try:
+                    download_url_data = await asyncio.wait_for(v.get_download_url(0), timeout=120)
+                    break
+                except asyncio.TimeoutError:
+                    if attempt < 2:
+                        print(f"Timeout for {bvid}, retrying {attempt + 1}/3...")
+                    else:
+                        print(f"Failed to process {bvid} after 3 retries.")
+                        return
+
+            detecter = VideoDownloadURLDataDetecter(data=download_url_data)
+            best_streams = detecter.detect_best_streams()
+
+            print(f'Starting to download {bvid}')
+
+            # Download video
             await download_url(best_streams[1].url, m4s_file, f"{bvid}")
 
-        # Convert to WAV using FFmpeg
-        ffmpeg_command = ["ffmpeg", "-n", "-i", m4s_file, wav_file]
-        subprocess.run(ffmpeg_command)
-        print(f'Finished processing {bvid}')
+            # Convert to WAV using FFmpeg
+            ffmpeg_command = ["ffmpeg", "-hide_banner", "-loglevel", "quiet", "-n", "-i", m4s_file, wav_file]
+            subprocess.run(ffmpeg_command)
+            print(f'Finished processing {bvid}')
+
+        # Remove the .m4s file after successful conversion
+        if os.path.exists(m4s_file):
+            if os.path.exists(wav_file):  # Ensure the WAV file was created successfully
+                os.remove(m4s_file)
+                print(f"Removed {m4s_file}")
+            else:
+                print(f"Failed to convert {m4s_file} to {wav_file}, skipping removal.")
 
 
 async def main():
