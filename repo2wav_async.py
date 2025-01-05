@@ -48,7 +48,7 @@ channel = ChannelSeries(uid=target_uid, type_=channel_series_type, id_=series_id
                         credential=my_credential)
 
 # Define a semaphore to limit concurrency
-semaphore = asyncio.Semaphore(16)
+semaphore = asyncio.Semaphore(8)
 
 
 async def process_video(archive, credential):
@@ -76,13 +76,13 @@ async def process_video(archive, credential):
 
         # Download video
         m4s_file = f"{bvid}.m4s"
-        if os.path.exists(m4s_file):
+        wav_file = f"{bvid}.wav"
+        if os.path.exists(wav_file):
             print(f"Skipping download for {m4s_file}, file already exists.")
         else:
             await download_url(best_streams[1].url, m4s_file, f"{bvid}")
 
         # Convert to WAV using FFmpeg
-        wav_file = f"{bvid}.wav"
         ffmpeg_command = ["ffmpeg", "-n", "-i", m4s_file, wav_file]
         subprocess.run(ffmpeg_command)
         print(f'Finished processing {bvid}')
