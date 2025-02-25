@@ -20,6 +20,7 @@ async def get_max_range(url: str) -> int:
         resp = await sess.get(url)
         return int(resp.headers.get('content-range').split("/")[-1])
 
+
 def get_credentials() -> Credential | None:
     credential = {}
     cj = None
@@ -55,9 +56,7 @@ def get_credentials() -> Credential | None:
 FFMPEG_PATH = "ffmpeg"
 
 
-async def download_url(url: str, out: str, info: str, credential: Credential, byte_range: str | None):
-    user = User(uid=credential.dedeuserid, credential=credential)
-    user_info = await user.get_user_info()
+async def download_url(url: str, out: str, info: str, credential: Credential, user_info, byte_range: str | None):
     uid = user_info['mid']
     username = user_info['name']
     vip = user_info['vip']
@@ -102,6 +101,8 @@ async def main():
         print("BV号应以BV开头，若为url，请确认url内含BV号")
         sleep(3)
         exit(-1)
+    user = User(uid=credential.dedeuserid, credential=credential)
+    user_info = await user.get_user_info()
     v = Video(bvid=bvid, credential=credential)
     # 获取视频信息
     v_info = await v.get_info()
@@ -152,7 +153,8 @@ async def main():
     # 有 MP4 流 / FLV 流两种可能
     if detecter.check_flv_mp4_stream():
         # FLV 流下载
-        await download_url(best_streams[0].url, "flv_temp.flv", "FLV 音视频流", credential=credential, byte_range=None)
+        await download_url(best_streams[0].url, "flv_temp.flv", "FLV 音视频流", credential=credential,
+                           user_info=user_info, byte_range=None)
         # 转换文件格式
         os.system(f'{FFMPEG_PATH} -i flv_temp.flv video.mp4')
         # 删除临时文件
@@ -162,25 +164,26 @@ async def main():
         max_video_range = await get_max_range(best_streams[0].url)
         max_audio_range = await get_max_range(best_streams[1].url)
         if (start_time_int == 0 or start_percentage == 0) and (end_time_int == 0 or end_percentage == 0):
-            await download_url(best_streams[0].url, "video_temp.m4s", "视频流", credential=credential, byte_range=None)
-            await download_url(best_streams[1].url, "audio_temp.m4s", "音频流", credential=credential, byte_range=None)
+            await download_url(best_streams[0].url, "video_temp.m4s", "视频流", credential=credential, user_info=user_info, byte_range=None)
+            await download_url(best_streams[1].url, "audio_temp.m4s", "音频流", credential=credential, user_info=user_info, byte_range=None)
         elif (end_time_int == 0 or end_percentage == 0):
             await download_url(best_streams[0].url, "video_temp.m4s", "视频流", credential=credential,
-                               byte_range=f'bytes={int(max_video_range * start_percentage)}-{max_video_range}')
+                               user_info=user_info, byte_range=f'bytes={int(max_video_range * start_percentage)}-{max_video_range}')
             await download_url(best_streams[1].url, "audio_temp.m4s", "音频流", credential=credential,
-                               byte_range=f'bytes={int(max_audio_range * start_percentage)}-{max_audio_range}')
+                               user_info=user_info, byte_range=f'bytes={int(max_audio_range * start_percentage)}-{max_audio_range}')
         elif (start_time_int == 0 or start_percentage == 0):
             await download_url(best_streams[0].url, "video_temp.m4s", "视频流", credential=credential,
-                               byte_range=f'bytes=0-{int(max_video_range * end_percentage)}')
+                               user_info=user_info, byte_range=f'bytes=0-{int(max_video_range * end_percentage)}')
             await download_url(best_streams[1].url, "audio_temp.m4s", "音频流", credential=credential,
-                               byte_range=f'bytes=0-{int(max_audio_range * end_percentage)}')
+                               user_info=user_info, byte_range=f'bytes=0-{int(max_audio_range * end_percentage)}')
         else:
             await download_url(best_streams[0].url, "video_temp.m4s", "视频流", credential=credential,
-                               byte_range=f'bytes={int(max_video_range * start_percentage)}-{int(max_video_range * end_percentage)}')
+                               user_info=user_info, byte_range=f'bytes={int(max_video_range * start_percentage)}-{int(max_video_range * end_percentage)}')
             await download_url(best_streams[1].url, "audio_temp.m4s", "音频流", credential=credential,
-                               byte_range=f'bytes={int(max_audio_range * start_percentage)}-{int(max_audio_range * end_percentage)}')
+                               user_info=user_info, byte_range=f'bytes={int(max_audio_range * start_percentage)}-{int(max_audio_range * end_percentage)}')
         # 混流
         os.system(f'{FFMPEG_PATH} -i video_temp.m4s -i audio_temp.m4s -vcodec copy -acodec copy {file_name}.mp4')
+        os.system(f'{FFMPEG_PATH} -i audio_temp.m4s -acodec copy {file_name}.mp3')
         # 删除临时文件
         os.remove("video_temp.m4s")
         os.remove("audio_temp.m4s")
