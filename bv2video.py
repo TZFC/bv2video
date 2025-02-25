@@ -183,7 +183,7 @@ async def main():
                                user_info=user_info, byte_range=f'bytes={int(max_audio_range * start_percentage)}-{int(max_audio_range * end_percentage)}')
         # 混流
         os.system(f'{FFMPEG_PATH} -i video_temp.m4s -i audio_temp.m4s -vcodec copy -acodec copy {file_name}.mp4')
-        os.system(f'{FFMPEG_PATH} -i audio_temp.m4s -acodec copy {file_name}.wav')
+        os.system(f'{FFMPEG_PATH} -i audio_temp.m4s -acodec copy {file_name}.m4a')
         # 删除临时文件
         os.remove("video_temp.m4s")
         os.remove("audio_temp.m4s")
